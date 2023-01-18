@@ -84,7 +84,7 @@ def submit_meter_readings(driver, cold_value, hot_value):
     hot_water_filed = driver.find_element(By.XPATH, f"//*[@id=\"indication[214281][{last_day}]\"]")
     hot_water_filed.send_keys(hot_value)
 
-    # driver.find_element(By.XPATH, "//*[@id=\"submit-meters\"]/button").click()
+    driver.find_element(By.XPATH, "//*[@id=\"submit-meters\"]/button").click()
 
 
 def run(cold_value, hot_value):
@@ -95,4 +95,4 @@ def run(cold_value, hot_value):
     driver.close()
 
 
-run("675", "398")
+# run("675", "398")

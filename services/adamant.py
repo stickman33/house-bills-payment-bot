@@ -1,86 +1,123 @@
-import requests
-from fake_useragent import UserAgent
-from lxml import html
+import time
+
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from webdriver_manager.chrome import ChromeDriverManager
 
 import config
 
-login_url = 'https://adamant.housev.ru/lk/inner.php'
-main_url = 'https://adamant.housev.ru/lk/'
-
-user = UserAgent().random
-
 login = config.adamant_login
 password = config.adamant_password
-
-header = {
-    'user-agent': user
-}
-
-data = {
-        'wlogin': login,
-        'wpassw': password,
-    }
-
 adamant_check_logs = False
 
 
-def get_tree(logger, session):
-    try:
-        session.post(login_url, data=data, headers=header)
-        url_res = session.get(login_url, headers=header)
-        tree = html.fromstring(url_res.content)
-        logger.success("Got tree " + str(url_res.status_code))
-        return tree
-    except requests.exceptions.RequestException as exc:
-        global adamant_check_logs
-        if not adamant_check_logs:
-            adamant_check_logs = True
-        logger.error(exc)
+def create_driver(logger):
+    chrome_options = webdriver.ChromeOptions()
+# First time on deploy need to start with maximized mode to get User data, then enable headless
+#     chrome_options.add_argument(r"user-data-dir=./User")
+    chrome_options.add_argument(r"user-data-dir=D:\my projects\bills-payment-bot\User")
+    chrome_options.add_argument('--headless')
+    # chrome_options.add_argument("start-maximized")
+    chrome_options.add_argument('--no-sandbox')
+    chrome_options.add_argument('--allow-profiles-outside-user-dir')
+    chrome_options.add_argument('--enable-profile-shortcut-manager')
+    chrome_options.add_argument('--disable-dev-shm-usage')
+    chrome_options.add_argument('--disable-infobars')
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
+    driver.set_page_load_timeout(30)
+    logger.success("Created chrome driver")
+    return driver
 
 
-def get_cost(logger, tree):
-    get_cost_txt = tree.xpath('//form[@method="POST"]/table/tr[3]/td[2]/input/@value')
+def log_in(driver, logger):
     try:
-        for element in get_cost_txt:
-            cost = float(element)
-            logger.success("Parsed cost")
-            return cost
+        login_url = "https://adamant.housev.ru/lk/"
+        driver.get(login_url)
+        time.sleep(1)
+
+        uname = driver.find_element(By.NAME, "wlogin")
+        uname.send_keys(login)
+
+        pword = driver.find_element(By.NAME, "wpassw")
+        pword.send_keys(password)
+
+        driver.find_element(By.XPATH, "/html/body/div/div/div[2]/div/form/input").click()
+        time.sleep(1)
+
+        WebDriverWait(driver=driver, timeout=10).until(
+            lambda x: x.execute_script("return document.readyState === 'complete'")
+        )
+
+        error_message = "Incorrect username or password."
+
+        errors = driver.find_elements(By.CLASS_NAME, "flash-error")
+
+        if any(error_message in e.text for e in errors):
+            # print("Login failed")
+            logger.error("Login failed")
+        else:
+            # print("Login successful")
+            logger.success("Login successful")
     except Exception as exc:
+        logger.error(exc)
         global adamant_check_logs
         if not adamant_check_logs:
             adamant_check_logs = True
-        logger.error(exc)
 
 
-def get_payment_url(logger, tree, session):
+def get_cost(driver, logger):
+    lk_url = "https://adamant.housev.ru/lk/inner.php"
+    driver.get(lk_url)
+    time.sleep(1)
+
+    cost = float(driver.find_element(By.XPATH, "/html/body/div/div/div[3]/div/form/table/tbody/tr[3]/td[2]/input")
+                 .get_attribute("value"))
+    logger.success("Got cost")
+    return cost
+
+
+def get_payment_url(driver, logger):
+
+    lk_url = "https://adamant.housev.ru/lk/inner.php"
+
     try:
-        get_payment_btn = tree.xpath('//form[@method="POST"]/@action')
-        for element in get_payment_btn:
-            payment_url = session.get(main_url + element, headers=header).url
-            logger.success("Got payment url")
-            return payment_url
-    except requests.exceptions.RequestException as exc:
-        global adamant_check_logs
-        if not adamant_check_logs:
-            adamant_check_logs = True
+        driver.get(lk_url)
+    except Exception as exc:
         logger.error(exc)
+
+    driver.find_element(By.XPATH, "/html/body/div/div/div[3]/div/form/input").click()
+    time.sleep(1)
+
+    current_tab = driver.current_window_handle
+    all_tabs = driver.window_handles
+
+    for tab in all_tabs:
+        if tab != current_tab:
+            driver.switch_to.window(tab)
+
+    payment_url = driver.current_url
+    logger.success("Got payment url")
+    return payment_url
 
 
 def run(logger):
-    logger.info("Adamant parsing started")
+    logger.info("adamant parsing started")
     global adamant_check_logs
     adamant_check_logs = False
-    session = requests.Session()
 
-    tree = get_tree(logger, session)
+    driver = create_driver(logger)
+    log_in(driver, logger)
+    cost = get_cost(driver, logger)
 
-    cost = get_cost(logger, tree)
     if cost != 0:
-        payment_url = get_payment_url(logger, tree, session)
+        payment_url = get_payment_url(driver, logger)
+        driver.close()
         return cost, payment_url
     else:
-        payment_url = ""
-        return cost, payment_url
-
+        payment_link = ""
+        driver.close()
+        return cost, payment_link
 
 

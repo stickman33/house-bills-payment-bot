@@ -12,7 +12,7 @@ from pytz import timezone
 
 import config
 from keyboards.choice_buttons import *
-from services import adamant, mosobleirc, mosru, mosenergosbyt, mgts
+from services import adamant, mosobleirc, mosru, mosenergosbyt, mgts, mosru_meter
 
 logging.basicConfig(level=logging.DEBUG)
 logger.add("logs/info.log", level="DEBUG", rotation="20 MB", compression="tar.gz")
@@ -64,9 +64,8 @@ async def check_mosobleirc():
 # TODO: передача показаний приборов учета воды
 async def check_mosru():
     cost, payment_url = mosru.run(logger)
-
-    # if mosobleirc.check_logs:
-    #     await bot.send_message(chat_id=11279097, text="Ошибка доступа к Мос.ру, проверьте логи", parse_mode="html")
+    if mosru.mosru_check_logs:
+        await bot.send_message(chat_id=11279097, text="Ошибка доступа к Мос.ру, проверьте логи", parse_mode="html")
     if cost == 0:
         zero_cost_list.append("mosru")
     else:
@@ -116,7 +115,7 @@ async def check_bills(message: types.Message):
     await message.answer(text="Проверка счетов...")
     if current_time >= begin_maintenance or current_time <= end_maintenance:
         await message.answer(text="Технические работы у МосОблЕИРЦ, Мосэнергосбыт")
-        await check_adamant()
+        # await check_adamant()
         await check_mosru()
         await check_mgts()
 
@@ -127,10 +126,10 @@ async def check_bills(message: types.Message):
                 await message.answer(text=text, reply_markup=keyboard, parse_mode="html")
     else:
         await check_mosobleirc()
-        await check_mosenergosbyt()
-        await check_adamant()
+        # await check_mosenergosbyt()
+        # await check_adamant()
         await check_mosru()
-        await check_mgts()
+        # await check_mgts()
 
         if len(zero_cost_list) == (5 - len(check_logs_list)):
             await message.answer(text="Неоплаченных счетов не найдено")
@@ -202,6 +201,7 @@ async def hot_water_value(message: types.Message, state: FSMContext):
 
         await state.finish()
         await message.answer(text="Показания приняты!", reply_markup=sub_menu)
+        mosru_meter.run(cold_water, hot_water)
     else:
         await message.answer("Введено некорректное значение")
 
@@ -236,9 +236,9 @@ async def schedule_check_bills(dp):
         for text, keyboard in payment_bills_dict.items():
             await dp.bot.send_message(chat_id=11279097, text=text, reply_markup=keyboard, parse_mode="html")
 
-        payment_bills_dict.clear()
-        zero_cost_list.clear()
-        check_logs_list.clear()
+    payment_bills_dict.clear()
+    zero_cost_list.clear()
+    check_logs_list.clear()
 
 # schedule
 scheduler = AsyncIOScheduler()
