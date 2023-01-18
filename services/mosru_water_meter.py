@@ -111,6 +111,7 @@ def submit_meter_readings(driver, cold_value, hot_value):
     hot_water_filed.send_keys(hot_value)
 
     driver.find_element(By.XPATH, "//*[@id=\"submit-meters\"]/button").click()
+    time.sleep(3)
 
 
 def run(logger, cold_value, hot_value):
