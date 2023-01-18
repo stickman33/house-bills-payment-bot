@@ -19,10 +19,11 @@ mosru_check_logs = False
 def create_driver(logger):
     chrome_options = webdriver.ChromeOptions()
 # First time on deploy need to start with maximized mode to get User data, then enable headless
-#     chrome_options.add_argument(r"user-data-dir=./User")
-    chrome_options.add_argument(r"user-data-dir=D:\my projects\bills-payment-bot\User")
+    chrome_options.add_argument(r"user-data-dir=./User")
+#     chrome_options.add_argument(r"user-data-dir=D:\my projects\bills-payment-bot\User")
+    chrome_options.add_argument("--window-size=1920,1080")
+    chrome_options.add_argument("--start-maximized")
     chrome_options.add_argument('--headless')
-    # chrome_options.add_argument("start-maximized")
     chrome_options.add_argument('--no-sandbox')
     chrome_options.add_argument('--allow-profiles-outside-user-dir')
     chrome_options.add_argument('--enable-profile-shortcut-manager')
@@ -35,25 +36,34 @@ def create_driver(logger):
 
 def log_in(driver, logger):
     driver.get("https://www.mos.ru/")
-    # time.sleep(3)
-    driver.implicitly_wait(5)
+    time.sleep(5)
+    # driver.implicitly_wait(5)
 
     try:
         logged_in = driver.find_element(By.XPATH, "//*[@id=\"mos-dropdown-user\"]/span[2]").get_attribute("innerHTML")
+        driver.implicitly_wait(5)
         logger.success("Already logged in as " + logged_in)
 
     except:
         auth = driver.find_element(By.XPATH, "//*[@id=\"mos-header\"]/div[2]/div/header/div[3]/button")
         driver.implicitly_wait(5)
+        # time.sleep(5)
+
         auth.click()
-        # time.sleep(3)
 
-        while driver.current_url != "https://login.mos.ru/sps/login/methods/password":
-            login = driver.find_element(By.XPATH, "//*[@id=\"mus-selector\"]/section/div/div[2]/button")
-            login.click()
+        while "login.mos.ru/sps/login/methods/password" not in driver.current_url:
+            try:
+                delete = driver.find_element("//*[@id=\"mus-selector\"]/section/div/div[1]/div/div/button")
+                driver.implicitly_wait(3)
+                # time.sleep(3)
+                delete.click()
+            except:
+                login = driver.find_element(By.XPATH, "//*[@id=\"mus-selector\"]/section/div/div[2]/button")
+                # time.sleep(3)
+                driver.implicitly_wait(3)
+                login.click()
             # time.sleep(3)
-            driver.implicitly_wait(3)
-
+            # driver.implicitly_wait(3)
 
         try:
             uname = driver.find_element("id", "login")
@@ -138,6 +148,15 @@ def get_electricity_cost(driver, logger):
         account_number.send_keys(account)
 
         driver.find_element(By.XPATH, "//*[@id=\"app\"]/div/div[1]/div[2]/div/form/div/div[1]/div[2]/button").click()
+        time.sleep(3)
+
+        try:
+            cost = float(driver.find_element(By.XPATH, "//*[@id=\"app\"]/div/div[1]/div[2]/div/form/div/div[2]/div[2]/div/div[3]/div/p[1]/span").text)
+            time.sleep(3)
+            return cost
+        except NoSuchElementException:
+            return 0
+
     except Exception as exc:
         logger.error(exc)
 
@@ -146,15 +165,16 @@ def run(logger):
     logger.info("Mos.ru parsing started")
     driver = create_driver(logger)
     log_in(driver, logger)
-    cost = get_gkh_cost(driver, logger)
+    cost_dict = {"ЕПД": get_gkh_cost(driver, logger), "Электроэнергия": get_electricity_cost(driver, logger)}
 
-    if cost != 0:
-        payment_url = "https://pay.mos.ru/mospaynew/newportal/charges"
-        driver.close()
-        return cost, payment_url
-    else:
-        payment_link = ""
-        driver.close()
-        return cost, payment_link
+    for cost in cost_dict.values():
+        if cost != 0:
+            payment_url = "https://pay.mos.ru/mospaynew/newportal/charges"
+            driver.close()
+            return cost_dict, payment_url
+        else:
+            payment_url = ""
+            driver.close()
+            return cost_dict, payment_url
 
 

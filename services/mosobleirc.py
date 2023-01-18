@@ -35,7 +35,7 @@ mosobleirc_check_logs = False
 
 def get_token(logger, session):
     try:
-        result = session.post(login_url, json=login_data, headers=header, timeout=3)
+        result = session.post(login_url, json=login_data, headers=header, timeout=10)
         post_data = json.loads(result.text)
         token = post_data['token']
         logger.success("Got token " + str(result.status_code))
@@ -50,7 +50,7 @@ def get_token(logger, session):
 def get_cost(logger, session):
     try:
         header['x-auth-tenant-token'] = get_token(logger, session)
-        url_res = session.get(main_url, headers=header, timeout=3)
+        url_res = session.get(main_url, headers=header, timeout=10)
         get_data = json.loads(url_res.text)
         if len(get_data) != 0:
             cost = float(get_data[0]['sum'] * -1)
@@ -69,7 +69,7 @@ def get_cost(logger, session):
 
 def get_payment_url(logger, session):
     try:
-        url_res = session.post(payment_service_url, json=payment_form, headers=header, timeout=3)
+        url_res = session.post(payment_service_url, json=payment_form, headers=header, timeout=10)
         get_data = json.loads(url_res.text)
         if 'formUrl' in get_data:
             payment_url = get_data['formUrl']

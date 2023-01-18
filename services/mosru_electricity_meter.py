@@ -16,28 +16,52 @@ password = config.mosru_password
 def create_driver(logger):
     chrome_options = webdriver.ChromeOptions()
 # First time on deploy need to start with maximized mode to get User data, then enable headless
-    # chrome_options.add_argument(r"user-data-dir=./User")
-    chrome_options.add_argument(r"user-data-dir=D:\my projects\bills-payment-bot\User")
-    # chrome_options.add_argument('--headless')
-    chrome_options.add_argument("start-maximized")
+    chrome_options.add_argument(r"user-data-dir=./User")
+    # chrome_options.add_argument(r"user-data-dir=D:\my projects\bills-payment-bot\User")
+    chrome_options.add_argument("--window-size=1920,1080")
+    chrome_options.add_argument("--start-maximized")
+    chrome_options.add_argument('--headless')
     chrome_options.add_argument('--no-sandbox')
     chrome_options.add_argument('--allow-profiles-outside-user-dir')
     chrome_options.add_argument('--enable-profile-shortcut-manager')
     chrome_options.add_argument('--disable-dev-shm-usage')
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
     driver.set_page_load_timeout(30)
-    logger.info("Created chrome driver")
+    logger.success("Created chrome driver")
     return driver
 
 
-def log_in(logger, driver):
-    driver.get("https://login.mos.ru/sps/login/methods/password?bo=%2Fsps%2Foauth%2Fae%3Fscope%3Dprofile%2Bopenid%2Bcontacts%2Busr_grps%26response_type%3Dcode%26redirect_uri%3Dhttps%3A%2F%2Fwww.mos.ru%2Fapi%2Facs%2Fv1%2Flogin%2Fsatisfy%26client_id%3Dmos.ru")
-    time.sleep(3)
+def log_in(driver, logger):
+    driver.get("https://www.mos.ru/")
+    time.sleep(5)
+    # driver.implicitly_wait(5)
 
     try:
         logged_in = driver.find_element(By.XPATH, "//*[@id=\"mos-dropdown-user\"]/span[2]").get_attribute("innerHTML")
-        logger.info("Already logged in as " + logged_in)
+        driver.implicitly_wait(5)
+        logger.success("Already logged in as " + logged_in)
+
     except:
+        auth = driver.find_element(By.XPATH, "//*[@id=\"mos-header\"]/div[2]/div/header/div[3]/button")
+        driver.implicitly_wait(5)
+        # time.sleep(5)
+
+        auth.click()
+
+        while "login.mos.ru/sps/login/methods/password" not in driver.current_url:
+            try:
+                delete = driver.find_element("//*[@id=\"mus-selector\"]/section/div/div[1]/div/div/button")
+                driver.implicitly_wait(3)
+                # time.sleep(3)
+                delete.click()
+            except:
+                login = driver.find_element(By.XPATH, "//*[@id=\"mus-selector\"]/section/div/div[2]/button")
+                # time.sleep(3)
+                driver.implicitly_wait(3)
+                login.click()
+            # time.sleep(3)
+            # driver.implicitly_wait(3)
+
         try:
             uname = driver.find_element("id", "login")
             uname.send_keys(username)
@@ -47,6 +71,7 @@ def log_in(logger, driver):
 
             driver.find_element("id", "bind").click()
             time.sleep(3)
+            # driver.implicitly_wait(3)
 
 
             WebDriverWait(driver=driver, timeout=10).until(
@@ -62,9 +87,9 @@ def log_in(logger, driver):
                 logger.error("Login failed")
             else:
                 # print("Login successful")
-                logger.info("Login successful")
+                logger.success("Login successful")
         except Exception as exc:
-            logger.info(exc)
+            logger.error(exc)
 
 
 def submit_meter_readings(logger, driver, t1, t2, t3):
@@ -97,7 +122,10 @@ def submit_meter_readings(logger, driver, t1, t2, t3):
         pok_t3.send_keys(t3)
 
         time.sleep(3)
-        # driver.find_element(By.XPATH, "//*[@id=\"app\"]/div/div[1]/div[2]/div/form/div/div[2]/div[2]/div/div[3]/button").click()
+        driver.find_element(By.XPATH, "//*[@id=\"app\"]/div/div[1]/div[2]/div/form/div/div[2]/div[2]/div/div[3]/button").click()
+
+        time.sleep(3)
+
 
     except Exception as exc:
         logger.error(exc)
@@ -107,11 +135,10 @@ def run(logger, t1, t2, t3):
     logger.info("Initiated Mos.ru electricity meter readings send")
 
     driver = create_driver(logger)
-    log_in(logger, driver)
+    log_in(driver, logger)
     submit_meter_readings(logger, driver, t1, t2, t3)
 
     logger.info("Mos.ru electricity meter readings sent")
     driver.close()
 
 
-# run("675", "398")
