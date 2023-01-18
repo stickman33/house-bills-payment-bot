@@ -12,7 +12,7 @@ from pytz import timezone
 
 import config
 from keyboards.choice_buttons import *
-from services import adamant, mosobleirc, mosru, mosenergosbyt, mgts, mosru_meter
+from services import adamant, mosobleirc, mosru, mosenergosbyt, mgts, mosru_water_meter, mosru_electricity_meter
 
 logging.basicConfig(level=logging.DEBUG)
 logger.add("logs/info.log", level="DEBUG", rotation="20 MB", compression="tar.gz")
@@ -113,6 +113,7 @@ async def check_bills(message: types.Message):
     current_time = datetime.now(timezone('Europe/Moscow')).time()
 
     await message.answer(text="Проверка счетов...")
+
     if current_time >= begin_maintenance or current_time <= end_maintenance:
         await message.answer(text="Технические работы у МосОблЕИРЦ, Мосэнергосбыт")
         # await check_adamant()
@@ -125,7 +126,7 @@ async def check_bills(message: types.Message):
             for text, keyboard in payment_bills_dict.items():
                 await message.answer(text=text, reply_markup=keyboard, parse_mode="html")
     else:
-        await check_mosobleirc()
+        # await check_mosobleirc()
         # await check_mosenergosbyt()
         # await check_adamant()
         await check_mosru()
@@ -147,6 +148,9 @@ class FSMStates(StatesGroup):
     cold_water = State()
     hot_water = State()
 
+    t1 = State()
+    t2 = State()
+    t3 = State()
 
 def is_integer(n):
     try:
@@ -159,7 +163,7 @@ def is_integer(n):
 
 @dp.message_handler(text=["Вода"], user_id=11279097)
 async def meter_readings_water(message: types.Message):
-    await message.answer("Введите показания счетчика холодной воды", reply_markup=sub_menu)
+    await message.answer("Введите показания счетчика холодной воды:", reply_markup=sub_menu)
     await FSMStates.cold_water.set()
 
 
@@ -176,7 +180,7 @@ async def cold_water_value(message: types.Message, state: FSMContext):
         async with state.proxy() as data:
             data["cold_water"] = answer
 
-        await message.answer("Введите показания счетчика горячей воды")
+        await message.answer("Введите показания счетчика горячей воды:")
         await FSMStates.hot_water.set()
     else:
         await message.answer("Введено некорректное значение")
@@ -201,7 +205,77 @@ async def hot_water_value(message: types.Message, state: FSMContext):
 
         await state.finish()
         await message.answer(text="Показания приняты!", reply_markup=sub_menu)
-        mosru_meter.run(cold_water, hot_water)
+        mosru_water_meter.run(logger, cold_water, hot_water)
+    else:
+        await message.answer("Введено некорректное значение")
+
+
+@dp.message_handler(text=["Электричество"], user_id=11279097)
+async def meter_readings_electricity(message: types.Message):
+    await message.answer("Введите показания пик (T1):", reply_markup=sub_menu)
+    await FSMStates.t1.set()
+
+
+@dp.message_handler(state=FSMStates.t1, user_id=11279097)
+async def t1(message: types.Message, state: FSMContext):
+    answer = message.text
+    if answer == "Меню":
+        await message.answer(text="Меню", reply_markup=main_menu)
+        await state.finish()
+    elif answer == "Передать показания":
+        await message.answer(text="Какие показания хотите передать?", reply_markup=meter_readings)
+        await state.finish()
+    elif is_integer(answer):
+        async with state.proxy() as data:
+            data["t1"] = answer
+
+        await message.answer("Введите показания ночь (T2):")
+        await FSMStates.t2.set()
+    else:
+        await message.answer("Введено некорректное значение")
+
+
+@dp.message_handler(state=FSMStates.t2, user_id=11279097)
+async def t2(message: types.Message, state: FSMContext):
+    answer = message.text
+    if answer == "Меню":
+        await message.answer(text="Меню", reply_markup=main_menu)
+        await state.finish()
+    elif answer == "Передать показания":
+        await message.answer(text="Какие показания хотите передать?", reply_markup=meter_readings)
+        await state.finish()
+    elif is_integer(answer):
+        async with state.proxy() as data:
+            data["t2"] = answer
+
+        await message.answer("Введите показания полупик (T3):")
+        await FSMStates.t3.set()
+    else:
+        await message.answer("Введено некорректное значение")
+
+
+@dp.message_handler(state=FSMStates.t3, user_id=11279097)
+async def t3(message: types.Message, state: FSMContext):
+    answer = message.text
+    if answer == "Меню":
+        await message.answer(text="Меню", reply_markup=main_menu)
+        await state.finish()
+    elif message.text == "Передать показания":
+        await message.answer(text="Какие показания хотите передать?", reply_markup=meter_readings)
+        await state.finish()
+    elif is_integer(answer):
+        data = await state.get_data()
+        t1 = data.get("t1")
+        t2 = data.get("t2")
+        t3 = answer
+
+        await message.answer(f"пик (T1): {t1}")
+        await message.answer(f"ночь (T2): {t2}")
+        await message.answer(f"полупик (T3): {t3}")
+
+        await state.finish()
+        await message.answer(text="Показания приняты!", reply_markup=sub_menu)
+        mosru_electricity_meter.run(logger, t1, t2, t3)
     else:
         await message.answer("Введено некорректное значение")
 
