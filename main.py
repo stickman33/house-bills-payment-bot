@@ -122,7 +122,7 @@ async def check_bills(message: types.Message):
     await message.answer(text="Проверка счетов...")
 
     if current_time >= begin_maintenance or current_time <= end_maintenance:
-        await message.answer(text="Технические работы у МосОблЕИРЦ")
+        await message.answer(text="Технические работы у МосОблЕИРЦ, Мосэнергосбыт")
         # await check_adamant()
         await check_mosru()
         await check_mgts()
