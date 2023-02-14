@@ -153,8 +153,10 @@ def get_electricity_cost(driver, logger):
         try:
             cost = float(driver.find_element(By.XPATH, "//*[@id=\"app\"]/div/div[1]/div[2]/div/form/div/div[2]/div[2]/div/div[3]/div/p[1]/span").text)
             time.sleep(3)
+            logger.success("Got cost")
             return cost
         except NoSuchElementException:
+            logger.success("Got cost")
             return 0
 
     except Exception as exc:
