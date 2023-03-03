@@ -134,8 +134,6 @@ async def check_bills(message: types.Message):
                 await message.answer(text=text, reply_markup=keyboard, parse_mode="html")
     else:
         await check_mosobleirc()
-        # await check_mosenergosbyt()
-        # await check_adamant()
         await check_mosru()
         await check_mgts()
 

@@ -19,11 +19,11 @@ mosru_check_logs = False
 def create_driver(logger):
     chrome_options = webdriver.ChromeOptions()
 # First time on deploy need to start with maximized mode to get User data, then enable headless
-    chrome_options.add_argument(r"user-data-dir=./User")
-#     chrome_options.add_argument(r"user-data-dir=D:\my projects\bills-payment-bot\User")
+#     chrome_options.add_argument(r"user-data-dir=./User")
+    chrome_options.add_argument(r"user-data-dir=D:\my projects\bills-payment-bot\User")
     chrome_options.add_argument("--window-size=1920,1080")
     chrome_options.add_argument("--start-maximized")
-    chrome_options.add_argument('--headless')
+    chrome_options.add_argument('--headless=new')
     chrome_options.add_argument('--no-sandbox')
     chrome_options.add_argument('--allow-profiles-outside-user-dir')
     chrome_options.add_argument('--enable-profile-shortcut-manager')
@@ -130,9 +130,13 @@ def get_gkh_cost(driver, logger):
     driver.find_element(By.XPATH, "//*[@id=\"data\"]/div/div[1]/div[3]/button").click()
 
     time.sleep(3)
-    cost = float(driver.find_element(By.XPATH, "//*[@id=\"step_2\"]/fieldset/div[4]/table/tbody/tr[1]/th[2]/span").text.replace(" ", "").replace(",", "."))
-    logger.success("Got cost")
-    return cost
+    try:
+        cost = float(driver.find_element(By.XPATH, "//*[@id=\"step_2\"]/fieldset/div[4]/table/tbody/tr[1]/th[2]/span").text.replace(" ", "").replace(",", "."))
+        logger.success("Got cost")
+        return cost
+    except (ValueError, NoSuchElementException):
+        logger.success("Got cost")
+        return 0
 
 
 def get_electricity_cost(driver, logger):

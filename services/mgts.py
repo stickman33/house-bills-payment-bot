@@ -17,10 +17,10 @@ mgts_check_logs = False
 def create_driver(logger):
     chrome_options = webdriver.ChromeOptions()
 # First time on deploy need to start with maximized mode to get User data, then enable headless
-    chrome_options.add_argument(r"user-data-dir=./User")
-    # chrome_options.add_argument(r"user-data-dir=D:\my projects\bills-payment-bot\User")
-    chrome_options.add_argument('--headless')
-    # chrome_options.add_argument("start-maximized")
+#     chrome_options.add_argument(r"user-data-dir=./User")
+    chrome_options.add_argument(r"user-data-dir=D:\my projects\bills-payment-bot\User")
+    chrome_options.add_argument('--headless=new')
+    chrome_options.add_argument("start-maximized")
     chrome_options.add_argument('--no-sandbox')
     chrome_options.add_argument('--allow-profiles-outside-user-dir')
     chrome_options.add_argument('--enable-profile-shortcut-manager')
