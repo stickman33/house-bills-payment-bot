@@ -10,15 +10,14 @@ import config
 
 username = config.mgts_login
 password = config.mgts_password
-
 mgts_check_logs = False
 
 
+# First time on deploy need to start with maximized mode to get User data, then enable headless
 def create_driver(logger):
     chrome_options = webdriver.ChromeOptions()
-# First time on deploy need to start with maximized mode to get User data, then enable headless
-#     chrome_options.add_argument(r"user-data-dir=./User")
-    chrome_options.add_argument(r"user-data-dir=D:\my projects\bills-payment-bot\User")
+    chrome_options.add_argument(r"user-data-dir=./User")
+    # chrome_options.add_argument(r"user-data-dir=D:\my projects\bills-payment-bot\User")
     chrome_options.add_argument('--headless=new')
     chrome_options.add_argument("start-maximized")
     chrome_options.add_argument('--no-sandbox')

@@ -16,11 +16,11 @@ password = config.mosru_password
 mosru_check_logs = False
 
 
+# First time on deploy need to start with maximized mode to get User data, then enable headless
 def create_driver(logger):
     chrome_options = webdriver.ChromeOptions()
-# First time on deploy need to start with maximized mode to get User data, then enable headless
-#     chrome_options.add_argument(r"user-data-dir=./User")
-    chrome_options.add_argument(r"user-data-dir=D:\my projects\bills-payment-bot\User")
+    chrome_options.add_argument(r"user-data-dir=./User")
+    # chrome_options.add_argument(r"user-data-dir=D:\my projects\bills-payment-bot\User")
     chrome_options.add_argument("--window-size=1920,1080")
     chrome_options.add_argument("--start-maximized")
     chrome_options.add_argument('--headless=new')
@@ -96,18 +96,6 @@ def log_in(driver, logger):
             global mosru_check_logs
             if not mosru_check_logs:
                 mosru_check_logs = True
-
-
-# def get_gkh_cost(driver, logger):
-#     get_gkh_url = "https://pay.mos.ru/mospaynew/newportal/charges"
-#     try:
-#         driver.get(get_gkh_url)
-#         driver.implicitly_wait(30)
-#         cost = float(driver.find_element(By.XPATH, "//*[@id=\"payment-list\"]/div/div[2]/accordion/mospay-charges-body-list/mospay-accordion-charges-list/mospay-charges-epd/accordion-group/div/div[1]/div/div/header/div[2]/span").text.replace("₽", "").replace(" ", "").replace(",", "."))
-#         logger.success("Got cost")
-#         return cost
-#     except NoSuchElementException:
-#         return 0
 
 
 def get_gkh_cost(driver, logger):

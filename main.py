@@ -12,7 +12,7 @@ from pytz import timezone
 
 import config
 from keyboards.choice_buttons import *
-from services import adamant, mosobleirc, mosru, mosenergosbyt, mgts, mosru_water_meter, mosru_electricity_meter
+from services import mosobleirc, mosru, mgts, mosru_water_meter, mosru_electricity_meter
 
 logging.basicConfig(level=logging.DEBUG)
 logger.add("logs/info.log", level="DEBUG", rotation="20 MB", compression="tar.gz")
@@ -30,22 +30,6 @@ payment_bills_dict = dict()
 
 begin_maintenance = time(23, 00)
 end_maintenance = time(7, 00)
-
-
-async def check_adamant():
-    cost, payment_url = adamant.run(logger)
-    global zero_cost_count, check_logs_count
-
-    if adamant.adamant_check_logs:
-        check_logs_count += 1
-        await bot.send_message(chat_id=11279097, text="Ошибка доступа к Адамант, проверьте логи", parse_mode="html")
-    elif cost == 0:
-        zero_cost_count += 1
-    else:
-        button_pay_adamant = InlineKeyboardButton("💸 Оплатить", url=payment_url)
-        keyboard_adamant = InlineKeyboardMarkup(row_width=1).add(button_pay_adamant)
-        global payment_bills_dict
-        payment_bills_dict[f"<b>Адамант</b> \nК оплате: {str(cost)}"] = keyboard_adamant
 
 
 async def check_mosobleirc():
@@ -80,21 +64,6 @@ async def check_mosru():
             payment_bills_dict[f"<b>Мос.ру</b> \n<b>{operator}</b>\nК оплате: {str(cost)}"] = keyboard_mosru
 
 
-# async def check_mosenergosbyt():
-#     cost, payment_url = mosenergosbyt.run(logger)
-#     global zero_cost_count, check_logs_count
-#
-#     if mosenergosbyt.mosenergosbyt_check_logs:
-#         check_logs_count += 1
-#         await bot.send_message(chat_id=11279097, text="Ошибка доступа к Мосэнергосбыт, проверьте логи", parse_mode="html")
-#     elif cost == 0:
-#         zero_cost_count += 1
-#     else:
-#         button_pay_mosenergosbyt = InlineKeyboardButton("💸 Оплатить", url=payment_url)
-#         keyboard_mosenergosbyt = InlineKeyboardMarkup(row_width=1).add(button_pay_mosenergosbyt)
-#         payment_bills_dict[f"<b>Мосэнергосбыт</b> \nК оплате: {str(cost)}"] = keyboard_mosenergosbyt
-
-
 async def check_mgts():
     cost, payment_url = mgts.run(logger)
     global zero_cost_count, check_logs_count
@@ -123,7 +92,6 @@ async def check_bills(message: types.Message):
 
     if current_time >= begin_maintenance or current_time <= end_maintenance:
         await message.answer(text="Технические работы у МосОблЕИРЦ, Мосэнергосбыт")
-        # await check_adamant()
         await check_mosru()
         await check_mgts()
 
@@ -133,9 +101,19 @@ async def check_bills(message: types.Message):
             for text, keyboard in payment_bills_dict.items():
                 await message.answer(text=text, reply_markup=keyboard, parse_mode="html")
     else:
-        await check_mosobleirc()
-        await check_mosru()
-        await check_mgts()
+
+        try:
+            await check_mosobleirc()
+        except Exception as exc:
+            logger.error(exc)
+        try:
+            await check_mosru()
+        except Exception as exc:
+            logger.error(exc)
+        try:
+            await check_mgts()
+        except Exception as exc:
+            logger.error(exc)
 
         if zero_cost_count == (3 - check_logs_count):
             await message.answer(text="Неоплаченных счетов не найдено")
@@ -143,6 +121,9 @@ async def check_bills(message: types.Message):
         else:
             for text, keyboard in payment_bills_dict.items():
                 await message.answer(text=text, reply_markup=keyboard, parse_mode="html")
+
+    if check_logs_count != 0:
+        await message.answer(text="Проверьте логи.")
 
     zero_cost_count = 0
     check_logs_count = 0
@@ -309,16 +290,26 @@ async def schedule_meter_readings(dp):
 async def schedule_check_bills(dp):
     global zero_cost_count, check_logs_count
 
-    # await check_adamant()
-    await check_mosobleirc()
-    await check_mosru()
-    # await check_mosenergosbyt()
-    await check_mgts()
+    try:
+        await check_mosobleirc()
+    except Exception as exc:
+        logger.error(exc)
+    try:
+        await check_mosru()
+    except Exception as exc:
+        logger.error(exc)
+    try:
+        await check_mgts()
+    except Exception as exc:
+        logger.error(exc)
 
     if len(payment_bills_dict) != 0:
         await dp.bot.send_message(chat_id=11279097, text="Найдены новые счета:")
         for text, keyboard in payment_bills_dict.items():
             await dp.bot.send_message(chat_id=11279097, text=text, reply_markup=keyboard, parse_mode="html")
+
+    if check_logs_count != 0:
+        await dp.bot.send_message.answer(chat_id=11279097, text="Проверьте логи.")
 
     zero_cost_count = 0
     check_logs_count = 0
