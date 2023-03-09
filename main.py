@@ -92,16 +92,22 @@ async def check_bills(message: types.Message):
 
     if current_time >= begin_maintenance or current_time <= end_maintenance:
         await message.answer(text="Технические работы у МосОблЕИРЦ, Мосэнергосбыт")
-        await check_mosru()
-        await check_mgts()
+        try:
+            await check_mosru()
+        except Exception as exc:
+            logger.error(exc)
+        try:
+            await check_mgts()
+        except Exception as exc:
+            logger.error(exc)
 
+# 3 because mosru return 2 values
         if zero_cost_count == (3 - check_logs_count):
             await message.answer(text="Неоплаченных счетов не найдено")
         else:
             for text, keyboard in payment_bills_dict.items():
                 await message.answer(text=text, reply_markup=keyboard, parse_mode="html")
     else:
-
         try:
             await check_mosobleirc()
         except Exception as exc:
@@ -115,9 +121,9 @@ async def check_bills(message: types.Message):
         except Exception as exc:
             logger.error(exc)
 
-        if zero_cost_count == (3 - check_logs_count):
+# 4 because mosru return 2 values
+        if zero_cost_count == (4 - check_logs_count):
             await message.answer(text="Неоплаченных счетов не найдено")
-
         else:
             for text, keyboard in payment_bills_dict.items():
                 await message.answer(text=text, reply_markup=keyboard, parse_mode="html")

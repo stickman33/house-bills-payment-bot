@@ -79,7 +79,7 @@ def get_cost(driver, logger):
     time.sleep(3)
 
     cost = float(driver.find_element(By.XPATH, "/html/body/section/div[1]/div/div[2]/aside/div[1]/div[2]/div/span").text.replace(",", ".")) * -1
-    logger.success("Got cost")
+    logger.success(f"Got cost {cost}")
     return cost
 
 

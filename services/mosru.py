@@ -120,7 +120,7 @@ def get_gkh_cost(driver, logger):
     time.sleep(3)
     try:
         cost = float(driver.find_element(By.XPATH, "//*[@id=\"step_2\"]/fieldset/div[4]/table/tbody/tr[1]/th[2]/span").text.replace(" ", "").replace(",", "."))
-        logger.success("Got cost")
+        logger.success(f"Got cost {cost}")
         return cost
     except (ValueError, NoSuchElementException):
         logger.success("Got cost")
@@ -145,7 +145,7 @@ def get_electricity_cost(driver, logger):
         try:
             cost = float(driver.find_element(By.XPATH, "//*[@id=\"app\"]/div/div[1]/div[2]/div/form/div/div[2]/div[2]/div/div[3]/div/p[1]/span").text)
             time.sleep(3)
-            logger.success("Got cost")
+            logger.success(f"Got cost {cost}")
             return cost
         except NoSuchElementException:
             logger.success("Got cost")
