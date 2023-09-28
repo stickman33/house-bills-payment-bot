@@ -1,4 +1,4 @@
-# Bill Checking and Payment Bot
+# Bill Checking and Payment Bot (Under Development)
 
 ## Описание
 
